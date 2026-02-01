@@ -1,0 +1,55 @@
+.upload-container {
+  margin-bottom: 24px;
+}
+
+.dropzone {
+  border: 2px dashed #334155;
+  border-radius: 10px;
+  padding: 24px;
+  text-align: center;
+  background: #0b1224;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.dropzone.active {
+  border-color: #3b82f6;
+  background: #0f172a;
+}
+
+.upload-prompt {
+  color: #cbd5e1;
+}
+
+.upload-hint {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.upload-progress p,
+.processing p {
+  margin: 0 0 8px 0;
+}
+
+.progress {
+  width: 100%;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #1f2937;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  margin: 0 auto;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+

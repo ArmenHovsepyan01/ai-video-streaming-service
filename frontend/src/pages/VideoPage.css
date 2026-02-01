@@ -1,0 +1,17 @@
+.video-page {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+
+.player-column,
+.chat-column {
+  min-height: 70vh;
+}
+
+@media (max-width: 960px) {
+  .video-page {
+    grid-template-columns: 1fr;
+  }
+}
+

@@ -1,0 +1,63 @@
+# Build nginx VOD module as a dynamic module
+FROM debian:12-slim as build
+
+ARG NGINX_VERSION=1.25.4
+ARG VOD_REPO=https://github.com/kaltura/nginx-vod-module.git
+
+RUN apt-get update && apt-get install -y \
+  build-essential \
+  libpcre3 \
+  libpcre3-dev \
+  zlib1g-dev \
+  libssl-dev \
+  git \
+  ca-certificates \
+  curl \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /tmp
+
+# Fetch nginx
+RUN curl -L "http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" -o nginx.tar.gz \
+  && tar xzf nginx.tar.gz
+
+# Fetch VOD module
+RUN git clone --depth=1 ${VOD_REPO}
+
+WORKDIR /tmp/nginx-${NGINX_VERSION}
+
+RUN ./configure \
+    --with-cc-opt='-O2' \
+    --with-ld-opt='-Wl,-rpath,/usr/local/lib' \
+    --with-http_ssl_module \
+    --with-compat \
+    --add-dynamic-module=../nginx-vod-module \
+  && make -j"$(nproc)" \
+  && test -f objs/ngx_http_vod_module.so \
+  && ls -l objs/ngx_http_vod_module.so \
+  && cp objs/ngx_http_vod_module.so /tmp/ngx_http_vod_module.so
+
+# Collect the built module
+RUN ls -l /tmp/ngx_http_vod_module.so
+
+FROM nginx:1.25.4
+
+# Install runtime deps for compatibility
+RUN apt-get update \
+  && apt-get install -y \
+     libpcre3 \
+     zlib1g \
+     openssl \
+  && rm -rf /var/lib/apt/lists/*
+
+# Copy dynamic module into standard module locations
+RUN mkdir -p /usr/lib/nginx/modules /etc/nginx/modules
+COPY --from=build /tmp/ngx_http_vod_module.so /usr/lib/nginx/modules/ngx_http_vod_module.so
+COPY --from=build /tmp/ngx_http_vod_module.so /etc/nginx/modules/ngx_http_vod_module.so
+
+# Prepare video directory
+RUN mkdir -p /opt/static/videos
+
+EXPOSE 80
+
+CMD ["/docker-entrypoint.sh", "nginx", "-g", "daemon off;"]

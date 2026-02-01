@@ -1,0 +1,20 @@
+.video-player-container {
+  background: #0b1224;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.video-player {
+  width: 100%;
+  border-radius: 6px;
+  background: black;
+}
+
+.quality-selector {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
