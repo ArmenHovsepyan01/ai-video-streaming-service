@@ -28,12 +28,12 @@ export const uploadVideo = async (file, onProgress) => {
 }
 
 export const getVideo = async (videoId) => {
-  const response = await api.get(`/videos/videos/${videoId}`)
+  const response = await api.get(`/videos/${videoId}`)
   return response.data
 }
 
 export const getVideos = async () => {
-  const response = await api.get('/videos/videos')
+  const response = await api.get('/videos')
   return response.data
 }
 
@@ -42,12 +42,12 @@ export const chatWithVideo = async (videoId, question, timestamp = null) => {
   if (timestamp !== null && timestamp !== undefined) {
     payload.timestamp = timestamp
   }
-  const response = await api.post(`/videos/videos/${videoId}/chat`, payload)
+  const response = await api.post(`/videos/${videoId}/chat`, payload)
   return response.data
 }
 
 export const getChatHistory = async (videoId) => {
-  const response = await api.get(`/videos/videos/${videoId}/chat-history`)
+  const response = await api.get(`/videos/${videoId}/chat-history`)
   return response.data
 }
 

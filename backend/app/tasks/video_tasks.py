@@ -13,12 +13,17 @@ def process_video_task(self, video_id: int, video_path: str):
     try:
         video = db.query(Video).filter(Video.id == video_id).first()
         video.status = "processing"
+        video.processing_step = "starting"
+        video.processing_progress = 5
         db.commit()
 
         video_dir = f"/app/videos/{video_id}"
         os.makedirs(video_dir, exist_ok=True)
 
         self.update_state(state='PROGRESS', meta={'step': 'transcoding', 'progress': 10})
+        video.processing_step = "transcoding"
+        video.processing_progress = 10
+        db.commit()
 
         bitrate_configs = [
             {'height': 1080, 'video_bitrate': '5000k', 'audio_bitrate': '192k', 'name': '1080p'},
@@ -38,12 +43,20 @@ def process_video_task(self, video_id: int, video_path: str):
             )
             progress = 10 + (i + 1) * 15
             self.update_state(state='PROGRESS', meta={'step': 'transcoding', 'progress': progress})
+            video.processing_progress = progress
+            db.commit()
 
         self.update_state(state='PROGRESS', meta={'step': 'extracting_audio', 'progress': 70})
+        video.processing_step = "extracting_audio"
+        video.processing_progress = 70
+        db.commit()
         audio_path = f"{video_dir}/audio.wav"
         video_processor.extract_audio(video_path, audio_path)
 
         self.update_state(state='PROGRESS', meta={'step': 'transcribing', 'progress': 75})
+        video.processing_step = "transcribing"
+        video.processing_progress = 75
+        db.commit()
         result = video_processor.transcribe_audio(audio_path)
 
         duration = video_processor.get_video_duration(video_path)
@@ -51,6 +64,9 @@ def process_video_task(self, video_id: int, video_path: str):
         db.commit()
 
         self.update_state(state='PROGRESS', meta={'step': 'generating_subtitles', 'progress': 85})
+        video.processing_step = "generating_subtitles"
+        video.processing_progress = 85
+        db.commit()
         vtt_content = video_processor.generate_vtt(result['segments'])
         vtt_path_en = f"{video_dir}/subtitles_en.vtt"
         with open(vtt_path_en, 'w', encoding='utf-8') as f:
@@ -61,30 +77,50 @@ def process_video_task(self, video_id: int, video_path: str):
         db.commit()
 
         self.update_state(state='PROGRESS', meta={'step': 'translating', 'progress': 90})
-        translated_segments = translator.translate_segments(result['segments'], 'es')
+        video.processing_step = "translating"
+        video.processing_progress = 90
+        db.commit()
 
-        vtt_translated = video_processor.generate_vtt(translated_segments, use_translated=True)
+        # Translate to Spanish
+        translated_segments_es = translator.translate_segments(result['segments'], 'es')
+        vtt_translated_es = video_processor.generate_vtt(translated_segments_es, use_translated=True)
         vtt_path_es = f"{video_dir}/subtitles_es.vtt"
         with open(vtt_path_es, 'w', encoding='utf-8') as f:
-            f.write(vtt_translated)
+            f.write(vtt_translated_es)
 
         translation_es = Translation(video_id=video_id, language_code='es', vtt_path=vtt_path_es)
         db.add(translation_es)
+
+        # Translate to Russian
+        translated_segments_ru = translator.translate_segments(result['segments'], 'ru')
+        vtt_translated_ru = video_processor.generate_vtt(translated_segments_ru, use_translated=True)
+        vtt_path_ru = f"{video_dir}/subtitles_ru.vtt"
+        with open(vtt_path_ru, 'w', encoding='utf-8') as f:
+            f.write(vtt_translated_ru)
+
+        translation_ru = Translation(video_id=video_id, language_code='ru', vtt_path=vtt_path_ru)
+        db.add(translation_ru)
+
         db.commit()
 
         self.update_state(state='PROGRESS', meta={'step': 'generating_embeddings', 'progress': 95})
+        video.processing_step = "generating_embeddings"
+        video.processing_progress = 95
+        db.commit()
         segments_with_translations = []
-        for orig, trans in zip(result['segments'], translated_segments):
+        for orig, trans_es in zip(result['segments'], translated_segments_es):
             segments_with_translations.append({
                 'start': orig['start'],
                 'end': orig['end'],
                 'text': orig['text'],
-                'translated_text': trans.get('translated_text')
+                'translated_text': trans_es.get('translated_text')
             })
 
         embedding_service.store_segments_with_embeddings(video_id, segments_with_translations)
 
         video.status = "completed"
+        video.processing_step = "done"
+        video.processing_progress = 100
         db.commit()
 
         if os.path.exists(audio_path):
@@ -94,6 +130,7 @@ def process_video_task(self, video_id: int, video_path: str):
 
     except Exception as e:  # noqa: BLE001
         video.status = "failed"
+        video.processing_step = "failed"
         db.commit()
         raise e
     finally:

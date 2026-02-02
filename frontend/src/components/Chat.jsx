@@ -65,60 +65,164 @@ function Chat({ videoId, onSeekTo, currentTime }) {
     onSeekTo?.(time)
   }
 
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
   return (
     <div className="chat-container">
-      <div className="chat-messages">
+      {/* Chat Header */}
+      <div className="chat-header">
+        <div className="chat-header-content">
+          <div className="ai-avatar-container">
+            <div className="ai-avatar">
+              <span className="material-symbols-outlined">auto_awesome</span>
+            </div>
+          </div>
+          <div className="chat-title-section">
+            <h3 className="chat-title">Video AI Intelligence</h3>
+            <div className="chat-status">
+              <span className="status-dot-pulse"></span>
+              <p className="status-text">Neural Engine Online</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Chat Messages */}
+      <div className="chat-messages custom-scrollbar">
         {messages.length === 0 && (
           <div className="chat-empty">
-            <p>💬 Ask questions about the video content</p>
+            <div className="session-badge">Analysis Complete — Session Started</div>
+            <div className="message-bubble ai-message">
+              <div className="message-avatar">
+                <span className="material-symbols-outlined">auto_awesome</span>
+              </div>
+              <div className="message-content">
+                <div className="message-text">
+                  Hello! I've analyzed this video for you. I can summarize content, explain specific concepts mentioned, or jump to timestamps for you. What would you like to explore?
+                </div>
+                <span className="message-time">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+            </div>
           </div>
         )}
 
         {messages.map((msg, i) => (
-          <div key={i} className="chat-message">
-            <div className="question">
-              <strong>Q:</strong> {msg.question}
-            </div>
-            <div className="answer">
-              <strong>A:</strong> {msg.answer}
-            </div>
-            {msg.relevant_segments && msg.relevant_segments.length > 0 && (
-              <div className="timestamps">
-                <strong>References:</strong>
-                <ul>
-                  {msg.relevant_segments.map((seg, idx) => (
-                    <li key={idx}>
-                      <button type="button" onClick={() => handleSeek(seg.start_time)}>
-                        {seg.start_time.toFixed(1)}s - {seg.end_time.toFixed(1)}s
-                      </button>{' '}
-                      — {seg.text}
-                    </li>
-                  ))}
-                </ul>
+          <div key={i} className="message-exchange">
+            {/* User Message */}
+            <div className="message-bubble user-message">
+              <div className="user-avatar">
+                <span className="avatar-initials">ME</span>
               </div>
-            )}
+              <div className="message-content">
+                <div className="message-text">{msg.question}</div>
+                <span className="message-time">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+            </div>
+
+            {/* AI Message */}
+            <div className="message-bubble ai-message">
+              <div className="message-avatar">
+                <span className="material-symbols-outlined">auto_awesome</span>
+              </div>
+              <div className="message-content">
+                <div className="message-text">{msg.answer}</div>
+
+                {msg.relevant_segments && msg.relevant_segments.length > 0 && (
+                  <div className="timestamps-section">
+                    <div className="timestamps-header">
+                      <span className="material-symbols-outlined">format_quote</span>
+                      <span className="timestamps-label">Video References</span>
+                    </div>
+                    <div className="timestamps-list">
+                      {msg.relevant_segments.map((seg, idx) => (
+                        <div key={idx} className="timestamp-item">
+                          <button
+                            type="button"
+                            className="timestamp-button"
+                            onClick={() => handleSeek(seg.start_time)}
+                          >
+                            <span className="material-symbols-outlined">play_circle</span>
+                            {formatTime(seg.start_time)}
+                          </button>
+                          <span className="timestamp-text">{seg.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <span className="message-time">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+            </div>
           </div>
         ))}
+
+        {loading && (
+          <div className="typing-indicator">
+            <div className="typing-dots">
+              <div className="typing-dot"></div>
+              <div className="typing-dot"></div>
+              <div className="typing-dot"></div>
+            </div>
+            <span className="typing-text">AI is thinking...</span>
+          </div>
+        )}
+
         <div ref={messagesEndRef} />
       </div>
 
-      <form className="chat-input" onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Ask about this video..."
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          disabled={loading}
-        />
-        <button type="submit" disabled={loading}>
-          {loading ? 'Thinking...' : 'Ask'}
-        </button>
-      </form>
-      {currentTime > 0 && (
-        <div className="chat-context-info">
-          📍 Context: {Math.floor(currentTime / 60)}:{String(Math.floor(currentTime % 60)).padStart(2, '0')}
+      {/* Chat Input */}
+      <div className="chat-input-container">
+        <form className="chat-input-form" onSubmit={handleSubmit}>
+          <div className="input-wrapper">
+            <textarea
+              className="chat-textarea custom-scrollbar"
+              placeholder="Ask anything about the video..."
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSubmit(e)
+                }
+              }}
+              disabled={loading}
+              rows={2}
+            />
+            <button
+              type="submit"
+              className="send-button"
+              disabled={loading || !question.trim()}
+            >
+              <span className="material-symbols-outlined">send</span>
+            </button>
+          </div>
+        </form>
+
+        <div className="chat-footer">
+          <div className="chat-actions">
+            <button className="action-button" type="button">
+              <span className="material-symbols-outlined">mic</span>
+            </button>
+            <button className="action-button" type="button">
+              <span className="material-symbols-outlined">attach_file</span>
+            </button>
+            <button className="action-button" type="button">
+              <span className="material-symbols-outlined">image</span>
+            </button>
+          </div>
+          {currentTime > 0 && (
+            <div className="context-info">
+              <span className="material-symbols-outlined">info</span>
+              <p className="context-text">Context: {formatTime(currentTime)}</p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }

@@ -26,6 +26,10 @@ function VideoUpload({ onUploadComplete }) {
       setUploading(false)
       setProcessing(true)
 
+      // Pass the full result to parent so it can subscribe to SSE
+      onUploadComplete?.(result)
+
+      // Still poll for backup
       pollTaskStatus(result.task_id, result.video_id)
     } catch (error) {
       console.error('Upload error:', error)
@@ -56,22 +60,39 @@ function VideoUpload({ onUploadComplete }) {
 
   return (
     <div className="upload-container">
-      <div {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''}`}>
-        <input {...getInputProps()} />
+      <div {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''} ${uploading || processing ? 'disabled' : ''}`}>
+        <input {...getInputProps()} disabled={uploading || processing} />
         {uploading ? (
           <div className="upload-progress">
-            <p>Uploading: {progress}%</p>
-            <progress value={progress} max="100" />
+            <div className="upload-icon">
+              <span className="material-symbols-outlined">cloud_upload</span>
+            </div>
+            <h2 className="upload-title">Uploading...</h2>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+            </div>
+            <p className="progress-text">{progress}%</p>
           </div>
         ) : processing ? (
-          <div className="processing">
-            <p>Processing video...</p>
-            <div className="spinner"></div>
+          <div className="processing-state">
+            <div className="processing-spinner"></div>
+            <h2 className="upload-title">Processing video...</h2>
+            <p className="upload-description">AI is analyzing your content</p>
           </div>
         ) : (
           <div className="upload-prompt">
-            <p>📹 Drag & drop a video here, or click to select</p>
-            <p className="upload-hint">Supported formats: MP4, MOV, AVI, MKV</p>
+            <div className="upload-icon">
+              <span className="material-symbols-outlined">upload_file</span>
+            </div>
+            <h2 className="upload-title">Upload your video project</h2>
+            <p className="upload-description">
+              Drag and drop your MP4, MOV or AVI files. Our AI will automatically generate captions, translate content, and extract key insights.
+            </p>
+            <div className="upload-features">
+              <span className="feature-tag">Auto-Captions</span>
+              <span className="feature-tag">Multilingual Support</span>
+              <span className="feature-tag">AI Summarization</span>
+            </div>
           </div>
         )}
       </div>
