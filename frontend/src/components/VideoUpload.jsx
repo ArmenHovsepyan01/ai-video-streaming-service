@@ -7,6 +7,9 @@ function VideoUpload({ onUploadComplete }) {
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [processing, setProcessing] = useState(false)
+  const [error, setError] = useState(null)
+
+  const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { 'video/*': ['.mp4', '.mov', '.avi', '.mkv'] },
@@ -18,6 +21,13 @@ function VideoUpload({ onUploadComplete }) {
     if (acceptedFiles.length === 0) return
 
     const file = acceptedFiles[0]
+    setError(null)
+
+    if (file.size > MAX_FILE_SIZE) {
+      setError(`File too large. Maximum size is 20 MB, got ${(file.size / (1024 * 1024)).toFixed(1)} MB`)
+      return
+    }
+
     setUploading(true)
     setProgress(0)
 
@@ -60,6 +70,13 @@ function VideoUpload({ onUploadComplete }) {
 
   return (
     <div className="upload-container">
+      {error && (
+        <div className="upload-error">
+          <span className="material-symbols-outlined">error</span>
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="error-close">×</button>
+        </div>
+      )}
       <div {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''} ${uploading || processing ? 'disabled' : ''}`}>
         <input {...getInputProps()} disabled={uploading || processing} />
         {uploading ? (
@@ -86,7 +103,7 @@ function VideoUpload({ onUploadComplete }) {
             </div>
             <h2 className="upload-title">Upload your video project</h2>
             <p className="upload-description">
-              Drag and drop your MP4, MOV or AVI files. Our AI will automatically generate captions, translate content, and extract key insights.
+              Drag and drop your MP4, MOV or AVI files (max 20 MB). Our AI will automatically generate captions, translate content, and extract key insights.
             </p>
             <div className="upload-features">
               <span className="feature-tag">Auto-Captions</span>

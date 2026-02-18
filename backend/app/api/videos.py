@@ -15,6 +15,8 @@ from pydantic import BaseModel
 
 router = APIRouter()
 
+MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
+
 class ChatRequest(BaseModel):
     question: str
     timestamp: Optional[float] = None
@@ -28,6 +30,13 @@ async def upload_video(file: UploadFile = File(...), db: Session = Depends(get_d
     if not file.content_type.startswith('video/'):
         raise HTTPException(400, "File must be a video")
 
+    # Check file size by reading content
+    contents = await file.read()
+    file_size = len(contents)
+
+    if file_size > MAX_FILE_SIZE:
+        raise HTTPException(413, f"File too large. Maximum size is 20 MB, got {file_size / (1024 * 1024):.1f} MB")
+
     video = Video(filename=f"{file.filename}", original_filename=file.filename, mime_type=file.content_type, status="uploading")
     db.add(video)
     db.commit()
@@ -38,9 +47,9 @@ async def upload_video(file: UploadFile = File(...), db: Session = Depends(get_d
     video_path = f"{video_dir}/original.mp4"
 
     with open(video_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        buffer.write(contents)
 
-    video.file_size = os.path.getsize(video_path)
+    video.file_size = file_size
     video.status = "queued"
     db.commit()
 
