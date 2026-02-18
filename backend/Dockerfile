@@ -6,11 +6,12 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     libpq-dev \
     gcc \
+    g++ \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir numpy==1.26.4 && \
+RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 RUN python -c "import whisper; whisper.load_model('base')"
