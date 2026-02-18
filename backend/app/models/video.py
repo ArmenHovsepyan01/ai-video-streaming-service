@@ -16,6 +16,7 @@ class Video(Base):
     task_id = Column(String(255))  # Celery task ID for tracking
     processing_step = Column(String(100))  # Current processing step
     processing_progress = Column(Integer, default=0)  # Progress percentage
+    thumbnail_path = Column(String(500))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -58,4 +59,3 @@ class ChatHistory(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     video = relationship("Video", back_populates="chats")
-

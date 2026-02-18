@@ -46,6 +46,11 @@ def process_video_task(self, video_id: int, video_path: str):
             video.processing_progress = progress
             db.commit()
 
+        thumbnail_path = f"{video_dir}/thumbnail.jpg"
+        video_processor.generate_thumbnail(video_path, thumbnail_path)
+        video.thumbnail_path = thumbnail_path
+        db.commit()
+
         self.update_state(state='PROGRESS', meta={'step': 'extracting_audio', 'progress': 70})
         video.processing_step = "extracting_audio"
         video.processing_progress = 70
@@ -135,4 +140,3 @@ def process_video_task(self, video_id: int, video_path: str):
         raise e
     finally:
         db.close()
-

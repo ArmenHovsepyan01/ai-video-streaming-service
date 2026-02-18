@@ -1,3 +1,4 @@
+import re
 import requests
 from typing import List, Dict
 from app.core.config import settings
@@ -5,7 +6,11 @@ from app.core.config import settings
 class LLMService:
     def __init__(self):
         self.base_url = settings.OLLAMA_URL
-        self.model = "deepseek-r1:14b"
+        self.model = "lfm2.5-thinking"
+
+    def _strip_thinking_tags(self, text: str) -> str:
+        """Remove <think>...</think> tags from model output."""
+        return re.sub(r'<think>.*?</think>\s*', '', text, flags=re.DOTALL).strip()
 
     def generate_answer(self, question: str, context_segments: List[Dict]) -> str:
         context = "\n\n".join([
@@ -29,7 +34,8 @@ Answer (be specific and reference timestamps when relevant):"""
                 timeout=60
             )
             response.raise_for_status()
-            return response.json()['response']
+            raw_response = response.json()['response']
+            return self._strip_thinking_tags(raw_response)
         except Exception as e:  # noqa: BLE001
             return f"Sorry, I couldn't generate an answer. Error: {str(e)}"
 

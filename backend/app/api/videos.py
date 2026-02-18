@@ -58,12 +58,43 @@ async def get_video(video_id: int, db: Session = Depends(get_db)):
     if not video:
         raise HTTPException(404, "Video not found")
 
-    return {"id": video.id, "filename": video.filename, "duration": video.duration, "status": video.status, "created_at": video.created_at}
+    thumbnail_url = None
+    if video.thumbnail_path:
+        thumbnail_url = f"/thumbnails/{video.id}/thumbnail.jpg"
+
+    return {
+        "id": video.id,
+        "filename": video.filename,
+        "duration": video.duration,
+        "status": video.status,
+        "created_at": video.created_at,
+        "thumbnail_url": thumbnail_url
+    }
 
 @router.get("/")
 async def list_videos(db: Session = Depends(get_db)):
     videos = db.query(Video).order_by(Video.created_at.desc()).all()
-    return videos
+    results = []
+    for video in videos:
+        thumbnail_url = None
+        if video.thumbnail_path:
+            thumbnail_url = f"/thumbnails/{video.id}/thumbnail.jpg"
+        results.append({
+            "id": video.id,
+            "filename": video.filename,
+            "original_filename": video.original_filename,
+            "duration": video.duration,
+            "status": video.status,
+            "file_size": video.file_size,
+            "mime_type": video.mime_type,
+            "task_id": video.task_id,
+            "processing_step": video.processing_step,
+            "processing_progress": video.processing_progress,
+            "created_at": video.created_at,
+            "updated_at": video.updated_at,
+            "thumbnail_url": thumbnail_url
+        })
+    return results
 
 @router.post("/{video_id}/chat", response_model=ChatResponse)
 async def chat_with_video(video_id: int, request: ChatRequest, db: Session = Depends(get_db)):
@@ -164,4 +195,3 @@ async def video_processing_status_stream(video_id: int, db: Session = Depends(ge
             yield f"data: {json.dumps({'error': 'Processing timeout', 'video_id': video_id})}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
-

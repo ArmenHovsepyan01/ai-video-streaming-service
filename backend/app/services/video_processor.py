@@ -80,5 +80,17 @@ class VideoProcessor:
         except:  # noqa: E722
             return 0.0
 
-video_processor = VideoProcessor()
+    def generate_thumbnail(self, video_path: str, output_path: str):
+        try:
+            (
+                ffmpeg
+                .input(video_path, ss=0)
+                .output(output_path, vframes=1)
+                .overwrite_output()
+                .run(capture_stdout=True, capture_stderr=True)
+            )
+            return output_path
+        except ffmpeg.Error as e:
+            raise Exception(f"Thumbnail error: {e.stderr.decode()}")
 
+video_processor = VideoProcessor()

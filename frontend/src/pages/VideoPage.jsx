@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import VideoPlayer from '../components/VideoPlayer'
 import Chat from '../components/Chat'
 import { getVideo } from '../services/api'
@@ -7,6 +7,7 @@ import './VideoPage.css'
 
 function VideoPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [video, setVideo] = useState(null)
   const [loading, setLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(0)
@@ -86,7 +87,12 @@ function VideoPage() {
 
   return (
     <main className="video-page">
+      <button className="back-button" onClick={() => navigate(-1)}>
+        <span className="material-symbols-outlined">arrow_back</span>
+        Back
+      </button>
       <div className="video-page-container">
+
         <div className="video-content">
           <div className="video-section">
             <VideoPlayer

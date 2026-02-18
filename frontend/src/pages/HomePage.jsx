@@ -97,6 +97,12 @@ function HomePage() {
     return `${diffDays} days ago`
   }
 
+  const getThumbnailUrl = (video) => {
+    if (!video?.thumbnail_url) return null
+    const streamingUrl = import.meta.env.VITE_STREAMING_URL || 'http://localhost:8080'
+    return `${streamingUrl}${video.thumbnail_url}`
+  }
+
   return (
     <div className="home-page">
       <header className="page-header">
@@ -205,9 +211,17 @@ function HomePage() {
                 ) : (
                   <Link to={`/video/${video.id}`} className="video-card-link">
                     <div className="video-preview">
+                      {getThumbnailUrl(video) ? (
+                        <img
+                          className="video-preview-image"
+                          src={getThumbnailUrl(video)}
+                          alt={video.original_filename || video.filename}
+                          loading="lazy"
+                        />
+                      ) : null}
                       <div className="preview-overlay"></div>
-                      <div className="status-indicator ready">
-                        <span className="status-dot"></span>
+                      <div className="video-status-indicator ready">
+                        <span className="video-status-dot"></span>
                         Ready
                       </div>
                     </div>
@@ -241,4 +255,3 @@ function HomePage() {
 }
 
 export default HomePage
-

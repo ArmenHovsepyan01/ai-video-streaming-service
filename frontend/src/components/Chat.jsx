@@ -43,16 +43,28 @@ function Chat({ videoId, onSeekTo, currentTime }) {
     const userQuestion = question
     setQuestion('')
 
+    // Add the user's question immediately
+    const newMessage = {
+      question: userQuestion,
+      answer: '',
+      relevant_segments: [],
+    }
+    setMessages((prev) => [...prev, newMessage])
+
     try {
       const response = await chatWithVideo(videoId, userQuestion, currentTime)
-      setMessages([
-        ...messages,
-        {
-          question: userQuestion,
-          answer: response.answer,
-          relevant_segments: response.relevant_segments,
-        },
-      ])
+      // Update the last message with the AI response
+      setMessages((prev) =>
+        prev.map((msg, idx) =>
+          idx === prev.length - 1
+            ? {
+                ...msg,
+                answer: response.answer,
+                relevant_segments: response.relevant_segments,
+              }
+            : msg
+        )
+      )
     } catch (error) {
       console.error('Chat error:', error)
       alert('Failed to get answer: ' + error.message)
@@ -123,7 +135,8 @@ function Chat({ videoId, onSeekTo, currentTime }) {
               </div>
             </div>
 
-            {/* AI Message */}
+            {/* AI Message - only show when answer is available */}
+            {msg.answer && (
             <div className="message-bubble ai-message">
               <div className="message-avatar">
                 <span className="material-symbols-outlined">auto_awesome</span>
@@ -158,6 +171,7 @@ function Chat({ videoId, onSeekTo, currentTime }) {
                 <span className="message-time">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             </div>
+            )}
           </div>
         ))}
 
