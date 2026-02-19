@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
     API_V1_PREFIX: str = "/api/v1"
     PROJECT_NAME: str = "Video Processing Platform"
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8000"
 
     class Config:
         env_file = ".env"

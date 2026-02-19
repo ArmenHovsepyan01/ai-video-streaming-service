@@ -5,9 +5,12 @@ from app.api import videos
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
+# Parse CORS origins from comma-separated env var
+cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
