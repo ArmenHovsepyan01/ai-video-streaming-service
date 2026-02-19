@@ -8,9 +8,9 @@ psycopg2-binary==2.9.9
 pgvector==0.2.4
 sqlalchemy==2.0.25
 numpy>=1.24.0,<2.0.0
-openai-whisper==20231117
+# openai-whisper installed separately in Dockerfile (needs --no-build-isolation)
+# torch installed separately in Dockerfile (CPU-only version)
 sentence-transformers==2.3.1
-torch>=2.1.0
 transformers==4.36.2
 ffmpeg-python==0.2.0
 requests==2.31.0
