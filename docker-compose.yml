@@ -123,6 +123,7 @@ services:
       retries: 3
 
   celery_worker:
+    build: ./backend
     image: video-streaming-backend
     platform: linux/amd64
     container_name: video_celery
@@ -141,6 +142,7 @@ services:
         condition: service_healthy
 
   celery_flower:
+    build: ./backend
     image: video-streaming-backend
     platform: linux/amd64
     container_name: video_flower
