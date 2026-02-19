@@ -3,7 +3,6 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import os
-import shutil
 import asyncio
 import json
 from app.core.database import get_db
@@ -38,32 +37,48 @@ async def upload_video(file: UploadFile = File(...), db: Session = Depends(get_d
         raise HTTPException(413, f"File too large. Maximum size is 20 MB, got {file_size / (1024 * 1024):.1f} MB")
 
     video = Video(filename=f"{file.filename}", original_filename=file.filename, mime_type=file.content_type, status="uploading")
-    db.add(video)
-    db.commit()
-    db.refresh(video)
+
+    def _create_video():
+        db.add(video)
+        db.commit()
+        db.refresh(video)
+
+    await asyncio.to_thread(_create_video)
 
     video_dir = f"/app/videos/{video.id}"
     os.makedirs(video_dir, exist_ok=True)
     video_path = f"{video_dir}/original.mp4"
 
-    with open(video_path, "wb") as buffer:
-        buffer.write(contents)
+    # Write file in thread pool to avoid blocking event loop
+    def _write_file():
+        with open(video_path, "wb") as buffer:
+            buffer.write(contents)
 
-    video.file_size = file_size
-    video.status = "queued"
-    db.commit()
+    await asyncio.to_thread(_write_file)
+
+    def _update_status():
+        video.file_size = file_size
+        video.status = "queued"
+        db.commit()
+
+    await asyncio.to_thread(_update_status)
 
     task = process_video_task.delay(video.id, video_path)
 
     # Store task_id for tracking
-    video.task_id = task.id
-    db.commit()
+    def _save_task_id():
+        video.task_id = task.id
+        db.commit()
+
+    await asyncio.to_thread(_save_task_id)
 
     return {"video_id": video.id, "task_id": task.id, "status": "queued"}
 
 @router.get("/{video_id}")
 async def get_video(video_id: int, db: Session = Depends(get_db)):
-    video = db.query(Video).filter(Video.id == video_id).first()
+    video = await asyncio.to_thread(
+        lambda: db.query(Video).filter(Video.id == video_id).first()
+    )
     if not video:
         raise HTTPException(404, "Video not found")
 
@@ -82,7 +97,9 @@ async def get_video(video_id: int, db: Session = Depends(get_db)):
 
 @router.get("/")
 async def list_videos(db: Session = Depends(get_db)):
-    videos = db.query(Video).order_by(Video.created_at.desc()).all()
+    videos = await asyncio.to_thread(
+        lambda: db.query(Video).order_by(Video.created_at.desc()).all()
+    )
     results = []
     for video in videos:
         thumbnail_url = None
@@ -107,34 +124,45 @@ async def list_videos(db: Session = Depends(get_db)):
 
 @router.post("/{video_id}/chat", response_model=ChatResponse)
 async def chat_with_video(video_id: int, request: ChatRequest, db: Session = Depends(get_db)):
-    video = db.query(Video).filter(Video.id == video_id).first()
+    video = await asyncio.to_thread(
+        lambda: db.query(Video).filter(Video.id == video_id).first()
+    )
     if not video:
         raise HTTPException(404, "Video not found")
 
     if video.status != "completed":
         raise HTTPException(400, "Video is still processing")
 
-    relevant_segments = embedding_service.search_similar_segments(
+    relevant_segments = await asyncio.to_thread(
+        embedding_service.search_similar_segments,
         video_id,
         request.question,
-        limit=5,
-        timestamp=request.timestamp
+        5,
+        request.timestamp
     )
 
     if not relevant_segments:
         raise HTTPException(404, "No relevant content found")
 
-    answer = llm_service.generate_answer(request.question, relevant_segments)
+    answer = await llm_service.generate_answer_async(
+        request.question,
+        relevant_segments
+    )
 
-    chat = ChatHistory(video_id=video_id, question=request.question, answer=answer)
-    db.add(chat)
-    db.commit()
+    def _save_chat():
+        chat = ChatHistory(video_id=video_id, question=request.question, answer=answer)
+        db.add(chat)
+        db.commit()
+
+    await asyncio.to_thread(_save_chat)
 
     return {"answer": answer, "relevant_segments": relevant_segments}
 
 @router.get("/{video_id}/chat-history")
 async def get_chat_history(video_id: int, db: Session = Depends(get_db)):
-    chats = db.query(ChatHistory).filter(ChatHistory.video_id == video_id).order_by(ChatHistory.created_at.desc()).all()
+    chats = await asyncio.to_thread(
+        lambda: db.query(ChatHistory).filter(ChatHistory.video_id == video_id).order_by(ChatHistory.created_at.desc()).all()
+    )
     return chats
 
 @router.get("/task/{task_id}")
@@ -148,7 +176,9 @@ async def get_task_status(task_id: str):
 async def video_processing_status_stream(video_id: int, db: Session = Depends(get_db)):
     """SSE endpoint for real-time video processing status updates"""
     async def event_generator():
-        video = db.query(Video).filter(Video.id == video_id).first()
+        video = await asyncio.to_thread(
+            lambda: db.query(Video).filter(Video.id == video_id).first()
+        )
         if not video:
             yield f"data: {json.dumps({'error': 'Video not found'})}\n\n"
             return
@@ -169,8 +199,8 @@ async def video_processing_status_stream(video_id: int, db: Session = Depends(ge
         max_retries = 600  # 10 minutes timeout
 
         while retries < max_retries:
-            # Refresh video status from DB
-            db.refresh(video)
+            # Refresh video status from DB (blocking call in thread pool)
+            await asyncio.to_thread(db.refresh, video)
 
             current_status = {
                 'video_id': video_id,
