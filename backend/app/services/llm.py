@@ -7,7 +7,7 @@ from app.core.config import settings
 class LLMService:
     def __init__(self):
         self.base_url = settings.OLLAMA_URL
-        self.model = "lfm2.5-thinking"
+        self.model = "qwen:0.5b"
 
     def _strip_thinking_tags(self, text: str) -> str:
         """Remove <think>...</think> tags from model output."""
